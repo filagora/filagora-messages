@@ -6,6 +6,8 @@ namespace Filagora\Messages;
 
 use Filagora\Core\Modules\Module;
 use Filagora\Core\Modules\ModuleRegistry;
+use Filagora\Core\Schema\PackageSchema;
+use Filagora\Core\Schema\SchemaRegistry;
 use Illuminate\Support\ServiceProvider;
 
 class MessagesServiceProvider extends ServiceProvider
@@ -19,6 +21,10 @@ class MessagesServiceProvider extends ServiceProvider
     {
         $this->app->make(ModuleRegistry::class)->register(
             new Module('messages', 'Filagora Messages', 'filagora/filagora-messages', requires: ['core']),
+        );
+
+        $this->app->make(SchemaRegistry::class)->register(
+            PackageSchema::fromFile('messages', __DIR__.'/../database/schema.php', __DIR__.'/../database/migrations'),
         );
 
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'filagora-messages');
