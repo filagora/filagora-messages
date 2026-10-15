@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Filagora\Messages\Support;
 
+use Filagora\Messages\Models\PrivateConversation;
+use Filagora\Messages\Models\PrivateConversationParticipant;
+use Filagora\Messages\Models\PrivateMessage;
+use Filagora\Messages\Models\PrivateMessageFolder;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
@@ -15,7 +19,7 @@ use InvalidArgumentException;
 final class Models
 {
     /**
-     * @return class-string<Model>
+     * @return ($key is 'folder' ? class-string<PrivateMessageFolder> : ($key is 'conversation' ? class-string<PrivateConversation> : ($key is 'participant' ? class-string<PrivateConversationParticipant> : ($key is 'message' ? class-string<PrivateMessage> : class-string<Model>))))
      */
     public static function class(string $key): string
     {

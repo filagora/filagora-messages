@@ -56,7 +56,7 @@ class PrivateConversationParticipant extends Model
     }
 
     /**
-     * @return BelongsTo<Model, $this>
+     * @return BelongsTo<PrivateConversation, $this>
      */
     public function conversation(): BelongsTo
     {
@@ -72,7 +72,7 @@ class PrivateConversationParticipant extends Model
     }
 
     /**
-     * @return BelongsTo<Model, $this>
+     * @return BelongsTo<PrivateMessageFolder, $this>
      */
     public function folder(): BelongsTo
     {
@@ -80,7 +80,7 @@ class PrivateConversationParticipant extends Model
     }
 
     /**
-     * @return BelongsTo<Model, $this>
+     * @return BelongsTo<PrivateMessageFolder, $this>
      */
     public function trashedFromFolder(): BelongsTo
     {
