@@ -14,6 +14,28 @@ person, holding that person's folder, read state and trash state, so deleting or
 per person. A site that already has these tables can adopt them with `php artisan filagora:adopt`.
 Models can be swapped in `config/filagora-messages.php`.
 
+## Using it
+
+```php
+$messages = app(\Filagora\Messages\Services\Messages::class);
+$conversation = $messages->send($sender, [$recipient], 'Subject', 'Body in markdown');
+$messages->reply($recipient, $conversation, 'Thanks');
+$messages->open($recipient, $conversation);        // marks their copy read
+
+$mailbox = app(\Filagora\Messages\Services\Mailbox::class);
+$mailbox->trash($recipient, [$conversation->id]);
+$mailbox->restore($recipient, [$conversation->id]);
+```
+
+- **Who may message whom** is the `MessagingPolicy` contract; bind your own (a member who switched
+  messages off, an ignore list). Anything refused throws `MessageRefused` with a `reason`.
+- **Mail.** A new message is emailed to its recipients. Set `filagora-messages.mail.enabled` to
+  false to notify through your own channels from the `MessageReceived` event.
+- **Trash.** `filagora:messages:purge-trashed` (schedule it daily) removes copies trashed more than
+  `trash.retention_days` ago, then conversations nobody keeps. Core's retention run does the same.
+  `ConversationsPurging` fires first so you can remove attachments.
+- **Privacy.** Registers a contributor (export and erasure) with core.
+
 ## Install
 
 Not yet released.

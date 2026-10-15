@@ -199,3 +199,21 @@ it('purges from the command, using the configured window or --days, and reports 
     $this->artisan('filagora:messages:purge-trashed')->expectsOutput('Removed 1 trashed copy(ies) and 0 conversation(s).')->assertExitCode(0);
     expect(copy_of($conversation, $bob)->deleted_at)->not->toBeNull();
 });
+
+it('takes a conversation out of Trash when it is moved to another folder', function () {
+    [, $bob, $conversation, $mailbox] = exchange();
+    $mailbox->trash($bob, [$conversation->id]);
+
+    $mailbox->move($bob, [$conversation->id], $mailbox->systemFolder($bob, 'archive'));
+
+    $row = copy_of($conversation, $bob);
+    expect($row->folder->slug)->toBe('archive')->and($row->trashed_at)->toBeNull()->and($row->trashed_from_folder_id)->toBeNull();
+});
+
+it('never purges what was trashed within the day, even asked for a zero-day window', function () {
+    [, $bob, $conversation, $mailbox] = exchange();
+    $mailbox->trash($bob, [$conversation->id]);
+    copy_of($conversation, $bob)->forceFill(['trashed_at' => now()->subHours(2)])->save();
+
+    expect($mailbox->purge(0))->toBe(['copies' => 0, 'conversations' => 0]);
+});
