@@ -54,7 +54,7 @@ class PrivateMessageFolder extends Model
     }
 
     /**
-     * @return HasMany<Model, $this>
+     * @return HasMany<PrivateConversationParticipant, $this>
      */
     public function participants(): HasMany
     {

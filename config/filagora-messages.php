@@ -26,4 +26,32 @@ return [
         'message' => PrivateMessage::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Mail
+    |--------------------------------------------------------------------------
+    |
+    | Whether a new message is emailed to its recipients by default, and the name of the route
+    | the email links to (it receives a `conversation` parameter). Turn mail off to notify
+    | through your own channels from the `MessageReceived` event.
+    |
+    */
+    'mail' => [
+        'enabled' => true,
+        'routes' => ['conversation' => null],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trash
+    |--------------------------------------------------------------------------
+    |
+    | Days a conversation may sit in a person's Trash before their copy is permanently removed
+    | by `filagora:messages:purge-trashed` (and by the retention rules core runs).
+    |
+    */
+    'trash' => [
+        'retention_days' => 30,
+    ],
+
 ];

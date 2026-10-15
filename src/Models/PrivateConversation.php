@@ -42,7 +42,7 @@ class PrivateConversation extends Model
     }
 
     /**
-     * @return HasMany<Model, $this>
+     * @return HasMany<PrivateMessage, $this>
      */
     public function messages(): HasMany
     {
@@ -50,7 +50,7 @@ class PrivateConversation extends Model
     }
 
     /**
-     * @return HasMany<Model, $this>
+     * @return HasMany<PrivateConversationParticipant, $this>
      */
     public function participants(): HasMany
     {

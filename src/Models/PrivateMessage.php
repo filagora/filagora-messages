@@ -37,7 +37,7 @@ class PrivateMessage extends Model
     }
 
     /**
-     * @return BelongsTo<Model, $this>
+     * @return BelongsTo<PrivateConversation, $this>
      */
     public function conversation(): BelongsTo
     {
