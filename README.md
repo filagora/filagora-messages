@@ -3,7 +3,7 @@
 Private conversations between members for Filagora: send, reply, per-person folders, read and
 unread, trash, and a purge of what has sat in the trash too long.
 
-> In progress, unreleased. The package is at `0.1`: the API may change between `0.x` minor
+> The package is at `0.1`: the API may change between `0.x` minor
 > versions. There is no frontend: it is models and services, and you build the mailbox pages.
 
 ## Tables
@@ -38,7 +38,13 @@ $mailbox->restore($recipient, [$conversation->id]);
 
 ## Install
 
-Not yet released.
+```bash
+composer require filagora/filagora-messages
+php artisan migrate
+```
+
+Schedule `filagora:messages:purge-trashed` daily. Tables are created with the `filagora_` prefix; a site
+that already has them can run `php artisan filagora:adopt` instead of migrating.
 
 ## Testing
 

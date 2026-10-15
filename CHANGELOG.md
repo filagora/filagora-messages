@@ -5,6 +5,10 @@ All notable changes to this package are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-15
+
+First release.
+
 ### Added
 - `Messages` service: `send`, `reply` and `open`. A conversation goes to its recipients' Inboxes unread; a reply pulls it out of everyone's Trash and makes it unread for the others.
 - `Mailbox` service: folders (built-in Inbox, Archive and Trash plus a person's own), move, trash, restore, delete, empty Trash, read and unread, unread count, and `purge`.
