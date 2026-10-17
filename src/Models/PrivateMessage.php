@@ -9,7 +9,9 @@ use Filagora\Core\Support\UserModel;
 use Filagora\Messages\Support\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use LogicException;
 
 /**
  * One message in a conversation.
@@ -50,5 +52,23 @@ class PrivateMessage extends Model
     public function sender(): BelongsTo
     {
         return $this->belongsTo(UserModel::class(), 'sender_id');
+    }
+
+    /**
+     * The files this message carries (needs `filagora/filagora-forums` and the link columns; see
+     * `filagora:messages:link-attachments`).
+     *
+     * @return HasMany<Model, $this>
+     */
+    public function attachments(): HasMany
+    {
+        $model = config('filagora.models.post_attachment') ?? config('filagora-forums.models.post_attachment');
+
+        if (! is_string($model)) {
+            throw new LogicException('Message attachments need filagora/filagora-forums.');
+        }
+
+        /** @var class-string<Model> $model */
+        return $this->hasMany($model, 'private_message_id');
     }
 }

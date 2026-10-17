@@ -34,6 +34,15 @@ $mailbox->restore($recipient, [$conversation->id]);
 - **Trash.** `filagora:messages:purge-trashed` (schedule it daily) removes copies trashed more than
   `trash.retention_days` ago, then conversations nobody keeps. Core's retention run does the same.
   `ConversationsPurging` fires first so you can remove attachments.
+- **Attachments** (with [`filagora/filagora-forums`](https://github.com/filagora/filagora-forums)
+  installed). Messages can carry files stored by forums' `Attachments` service. The migration adds
+  two columns to forums' attachments table, linking a file to a message and its conversation
+  (`php artisan filagora:messages:link-attachments` adds them if forums was installed after messages).
+  Upload a file while writing (`Attachments::storeInline()`), put its URL in the message body, and
+  sending or replying claims the sender's own waiting files that the body refers to, using forums'
+  `attachments.inline_pattern`. Only people still in the conversation may see the files; removing the
+  conversation takes the access away. `PrivateMessage::attachments()` lists a message's files.
+  If the conversation is deleted, forums cleans up the orphaned files.
 - **Privacy.** Registers a contributor (export and erasure) with core.
 
 ## Install

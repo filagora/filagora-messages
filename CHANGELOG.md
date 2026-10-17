@@ -5,6 +5,10 @@ All notable changes to this package are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Attachments** with `filagora/filagora-forums` `^0.6` (suggested, not required). A migration, run from `database/migrations/forums` and dated after forums' attachments table, adds `private_message_id` and `private_conversation_id` (each a foreign key that is cleared, not cascaded) to that table; it does nothing without forums, and `filagora:messages:link-attachments` adds the columns later. `AttachmentLinks` installs them safely from any half-done state. Sending or replying claims the sender's own waiting files that the body refers to (`ClaimMessageAttachments`); `MessageAttachmentAccess` lets only people still in the conversation see them; `PrivateMessage::attachments()`. The columns are declared as a schema extension of the forums snapshot, so `filagora:adopt` accepts a table that has them.
+
 ## [0.1.0] - 2026-10-15
 
 First release.
