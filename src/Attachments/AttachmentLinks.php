@@ -41,19 +41,8 @@ final class AttachmentLinks
             return false;
         }
 
-        if (! Schema::hasColumn(self::table(), 'private_message_id')) {
-            Schema::table(self::table(), function (Blueprint $table): void {
-                $table->unsignedBigInteger('private_message_id')->nullable()->after('thread_id');
-                $table->foreign('private_message_id')->references('id')->on(Tables::name('private_messages'))->nullOnDelete();
-            });
-        }
-
-        if (! Schema::hasColumn(self::table(), 'private_conversation_id')) {
-            Schema::table(self::table(), function (Blueprint $table): void {
-                $table->unsignedBigInteger('private_conversation_id')->nullable()->after('private_message_id');
-                $table->foreign('private_conversation_id')->references('id')->on(Tables::name('private_conversations'))->nullOnDelete();
-            });
-        }
+        self::link('private_message_id', 'private_messages', 'thread_id');
+        self::link('private_conversation_id', 'private_conversations', 'private_message_id');
 
         return true;
     }
@@ -65,14 +54,46 @@ final class AttachmentLinks
         }
 
         foreach (['private_conversation_id', 'private_message_id'] as $column) {
-            if (Schema::hasColumn(self::table(), $column)) {
+            if (self::hasForeignKey($column)) {
                 Schema::table(self::table(), function (Blueprint $table) use ($column): void {
                     $table->dropForeign([$column]);
                 });
+            }
+
+            if (Schema::hasColumn(self::table(), $column)) {
                 Schema::table(self::table(), function (Blueprint $table) use ($column): void {
                     $table->dropColumn($column);
                 });
             }
         }
+    }
+
+    /**
+     * Add the column (after another) and its foreign key, whichever of the two is missing.
+     */
+    private static function link(string $column, string $referenced, string $after): void
+    {
+        if (! Schema::hasColumn(self::table(), $column)) {
+            Schema::table(self::table(), function (Blueprint $table) use ($column, $after): void {
+                $table->unsignedBigInteger($column)->nullable()->after($after);
+            });
+        }
+
+        if (! self::hasForeignKey($column)) {
+            Schema::table(self::table(), function (Blueprint $table) use ($column, $referenced): void {
+                $table->foreign($column)->references('id')->on(Tables::name($referenced))->nullOnDelete();
+            });
+        }
+    }
+
+    private static function hasForeignKey(string $column): bool
+    {
+        foreach (Schema::getForeignKeys(self::table()) as $key) {
+            if ($key['columns'] === [$column]) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

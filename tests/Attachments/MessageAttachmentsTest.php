@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Filagora\Core\Schema\SchemaRegistry;
 use Filagora\Core\Schema\TableShape;
+use Filagora\Core\Support\Tables;
 use Filagora\Forums\Models\Forum;
 use Filagora\Forums\Models\ForumGroup;
 use Filagora\Forums\Models\Post;
@@ -11,11 +12,15 @@ use Filagora\Forums\Models\PostAttachment;
 use Filagora\Forums\Models\Thread;
 use Filagora\Forums\Services\Attachments;
 use Filagora\Messages\Attachments\AttachmentLinks;
+use Filagora\Messages\Attachments\ClaimMessageAttachments;
+use Filagora\Messages\Events\MessageReceived;
+use Filagora\Messages\Models\PrivateConversation;
 use Filagora\Messages\Models\PrivateMessage;
 use Filagora\Messages\Services\Mailbox;
 use Filagora\Messages\Services\Messages;
 use Filagora\Messages\Tests\Support\TestUser;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -225,4 +230,86 @@ it('needs forums to list a message\'s files', function () {
     config(['filagora.models.post_attachment' => null, 'filagora-forums.models.post_attachment' => null]);
 
     expect(fn () => $message->attachments())->toThrow(LogicException::class);
+});
+
+// ----------------------------------------- a table without the message links
+
+/*
+ * These change the table's columns, which commits the test's transaction, so they create no rows
+ * and put the columns back in a finally block.
+ */
+it('can take the links off and put them back, and says it is installed only with both', function () {
+    try {
+        AttachmentLinks::uninstall();
+        AttachmentLinks::uninstall();
+
+        expect(AttachmentLinks::available())->toBeTrue()->and(AttachmentLinks::installed())->toBeFalse()
+            ->and(array_keys(TableShape::inspect('post_attachments')->columns))->not->toContain('private_message_id', 'private_conversation_id');
+
+        expect(AttachmentLinks::install())->toBeTrue()->and(AttachmentLinks::installed())->toBeTrue()
+            ->and(array_slice(array_keys(TableShape::inspect('post_attachments')->columns), 0, 6))->toBe(['id', 'post_id', 'thread_id', 'private_message_id', 'private_conversation_id', 'uploader_id']);
+
+        AttachmentLinks::uninstall();
+        Schema::table(Tables::name('post_attachments'), fn ($table) => $table->unsignedBigInteger('private_message_id')->nullable());
+        expect(AttachmentLinks::installed())->toBeFalse();
+
+        AttachmentLinks::install();
+        expect(AttachmentLinks::installed())->toBeTrue()->and(array_keys(TableShape::inspect('post_attachments')->foreignKeys))->toContain('post_attachments_private_message_id_foreign', 'post_attachments_private_conversation_id_foreign');
+    } finally {
+        AttachmentLinks::uninstall();
+        AttachmentLinks::install();
+    }
+
+    expect(AttachmentLinks::installed())->toBeTrue();
+});
+
+it('ignores a sent message when the links are not in the table', function () {
+    try {
+        AttachmentLinks::uninstall();
+        $message = new PrivateMessage(['body' => '/post-attachments/1', 'sender_id' => 1]);
+        $conversation = new PrivateConversation;
+
+        (new ClaimMessageAttachments)->handle(new MessageReceived($conversation, $message, []));
+
+        expect(AttachmentLinks::installed())->toBeFalse();
+    } finally {
+        AttachmentLinks::install();
+    }
+});
+
+it('adds the links from the command when they are missing', function () {
+    try {
+        AttachmentLinks::uninstall();
+
+        $this->artisan('filagora:messages:link-attachments')->expectsOutput('Added the message links to the attachments table.')->assertExitCode(0);
+
+        expect(AttachmentLinks::installed())->toBeTrue();
+    } finally {
+        AttachmentLinks::install();
+    }
+});
+
+// ----------------------------------------------------------- more edge cases
+
+it('does not take a file whose post was deleted, because it still belongs to the thread', function () {
+    $alice = TestUser::make('Alice');
+    $bob = TestUser::make('Bob');
+    $group = ForumGroup::create(['slug' => 'main', 'name' => 'Main']);
+    $forum = Forum::create(['forum_group_id' => $group->id, 'name' => 'F', 'slug' => 'f']);
+    $thread = Thread::create(['forum_id' => $forum->id, 'author_id' => $alice->id, 'title' => 'T', 'slug' => 't']);
+    $post = Post::create(['thread_id' => $thread->id, 'author_id' => $alice->id, 'body' => 'Hello']);
+    $file = filesService()->store($post, $alice, [UploadedFile::fake()->image('kept.png')])[0];
+    $post->delete();
+
+    app(Messages::class)->send($alice, [$bob], 'Hi', "/post-attachments/{$file->id}");
+
+    expect($file->refresh()->post_id)->toBeNull()->and($file->thread_id)->toBe($thread->id)->and($file->private_message_id)->toBeNull();
+});
+
+it('does not show a message\'s files to someone in a different conversation', function () {
+    [$alice] = messageWithFile($file);
+    $carol = TestUser::make('Carol');
+    app(Messages::class)->send($alice, [$carol], 'Another', 'Nothing attached');
+
+    expect(filesService()->canView($file->refresh(), $carol))->toBeFalse();
 });
