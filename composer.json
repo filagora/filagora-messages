@@ -16,6 +16,7 @@
         "filagora/filagora-core": "^0.2.1"
     },
     "require-dev": {
+        "filagora/filagora-forums": "^0.6",
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.0",
         "orchestra/testbench": "^11.0",
@@ -51,5 +52,8 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "suggest": {
+        "filagora/filagora-forums": "Lets private messages carry attachments: adds the link columns to its attachments table, and the rule that only the conversation's participants may see them."
+    }
 }

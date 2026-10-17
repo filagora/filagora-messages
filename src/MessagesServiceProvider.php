@@ -9,7 +9,12 @@ use Filagora\Core\Modules\ModuleRegistry;
 use Filagora\Core\Privacy\PrivacyContributorRegistry;
 use Filagora\Core\Privacy\RetentionRuleRegistry;
 use Filagora\Core\Schema\PackageSchema;
+use Filagora\Core\Schema\SchemaExtension;
 use Filagora\Core\Schema\SchemaRegistry;
+use Filagora\Forums\Services\Attachments;
+use Filagora\Messages\Attachments\ClaimMessageAttachments;
+use Filagora\Messages\Attachments\MessageAttachmentAccess;
+use Filagora\Messages\Console\LinkAttachmentsCommand;
 use Filagora\Messages\Console\PurgeTrashedCommand;
 use Filagora\Messages\Contracts\MessagingPolicy;
 use Filagora\Messages\Events\MessageReceived;
@@ -43,20 +48,44 @@ class MessagesServiceProvider extends ServiceProvider
             PackageSchema::fromFile('messages', __DIR__.'/../database/schema.php', __DIR__.'/../database/migrations'),
         );
 
+        $this->app->make(SchemaRegistry::class)->extend(SchemaExtension::fromFile(
+            'messages',
+            'forums',
+            __DIR__.'/../database/extensions/forums.php',
+            __DIR__.'/../database/migrations/forums',
+        ));
+
         Event::listen(MessageReceived::class, SendMessageMail::class);
+        Event::listen(MessageReceived::class, ClaimMessageAttachments::class);
+        $this->allowParticipantsToSeeMessageFiles();
 
         $this->app->make(PrivacyContributorRegistry::class)->register(new MessagesDataContributor);
         $this->app->make(RetentionRuleRegistry::class)->register(new TrashRetention($this->app->make(Mailbox::class)));
 
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'filagora-messages');
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadMigrationsFrom([__DIR__.'/../database/migrations', __DIR__.'/../database/migrations/forums']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([PurgeTrashedCommand::class]);
+            $this->commands([PurgeTrashedCommand::class, LinkAttachmentsCommand::class]);
 
             $this->publishes([
                 __DIR__.'/../config/filagora-messages.php' => config_path('filagora-messages.php'),
             ], 'filagora-messages-config');
         }
+    }
+
+    /**
+     * With `filagora-forums` installed, its attachments service asks this package about files that
+     * belong to a private message.
+     */
+    private function allowParticipantsToSeeMessageFiles(): void
+    {
+        if (! class_exists(Attachments::class)) {
+            return;
+        }
+
+        $this->callAfterResolving(Attachments::class, function (Attachments $attachments): void {
+            $attachments->authorizeUsing((new MessageAttachmentAccess)(...));
+        });
     }
 }
