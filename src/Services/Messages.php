@@ -19,13 +19,18 @@ use Illuminate\Support\Str;
 /**
  * Sending, replying and opening. A new conversation goes to its recipients' Inboxes, unread; a
  * reply pulls the conversation out of anyone's Trash and makes it unread for everyone but the
- * sender. The site's `MessagingPolicy` decides who may message whom, and the whole send is refused
- * (`MessageRefused`) if any recipient is off limits. Rendering and attachments are the host's;
+ * sender. The site's `MessagingPolicy` decides who may message whom, and so do ignore lists (either
+ * person ignoring the other blocks both ways); the whole send is refused (`MessageRefused`) if any
+ * recipient is off limits. Rendering and attachments are the host's;
  * the body is kept as given, in the `markdown` content format.
  */
 class Messages
 {
-    public function __construct(private readonly Mailbox $mailbox, private readonly MessagingPolicy $policy) {}
+    public function __construct(
+        private readonly Mailbox $mailbox,
+        private readonly MessagingPolicy $policy,
+        private readonly IgnoredUsers $ignored,
+    ) {}
 
     /**
      * Start a conversation. The sender is a participant too, with their copy already read.
@@ -189,7 +194,7 @@ class Messages
         $blocked = [];
 
         foreach ($recipients as $id => $recipient) {
-            if (! $this->policy->canMessage($sender, $recipient)) {
+            if (! $this->policy->canMessage($sender, $recipient) || $this->ignored->isBlockedBetween($sender, $recipient)) {
                 $blocked[] = $id;
             }
         }

@@ -16,12 +16,18 @@ use Illuminate\Support\Facades\Schema;
  * differ only by two import-id columns a profile package declares).
  */
 
-const MESSAGE_TABLES = ['private_message_folders', 'private_conversations', 'private_conversation_participants', 'private_messages'];
+const MESSAGE_TABLES = ['private_message_folders', 'private_conversations', 'private_conversation_participants', 'private_messages', 'ignored_users'];
 const MESSAGE_MIGRATION = '2026_10_15_000000_create_filagora_message_tables';
+const IGNORED_MIGRATION = '2026_10_22_000000_create_filagora_ignored_users_table';
 
 function messageMigration(): object
 {
     return require __DIR__.'/../../database/migrations/'.MESSAGE_MIGRATION.'.php';
+}
+
+function ignoredMigration(): object
+{
+    return require __DIR__.'/../../database/migrations/'.IGNORED_MIGRATION.'.php';
 }
 
 /**
@@ -31,10 +37,13 @@ function messageMigration(): object
 function existingMessageTables(): void
 {
     messageMigration()->down();
+    ignoredMigration()->down();
     config(['filagora.table_prefix' => '']);
     messageMigration()->down();
+    ignoredMigration()->down();
     messageMigration()->up();
-    DB::table('migrations')->where('migration', MESSAGE_MIGRATION)->delete();
+    ignoredMigration()->up();
+    DB::table('migrations')->whereIn('migration', [MESSAGE_MIGRATION, IGNORED_MIGRATION])->delete();
 }
 
 afterEach(function () {
@@ -47,13 +56,17 @@ afterEach(function () {
     if (! Schema::hasTable(Tables::name('private_messages'))) {
         messageMigration()->up();
     }
+
+    if (! Schema::hasTable(Tables::name('ignored_users'))) {
+        ignoredMigration()->up();
+    }
 });
 
-it('ships a snapshot of the four tables that matches the migration, column order included', function () {
+it('ships a snapshot of the five tables that matches the migration, column order included', function () {
     $snapshot = app(SchemaRegistry::class)->get('messages');
 
     expect(array_keys($snapshot->tables))->toBe(MESSAGE_TABLES)
-        ->and($snapshot->migrationNames())->toBe([MESSAGE_MIGRATION]);
+        ->and($snapshot->migrationNames())->toBe([MESSAGE_MIGRATION, IGNORED_MIGRATION]);
 
     foreach ($snapshot->tables as $base => $expected) {
         expect(TableShape::inspect($base)->differencesFrom($expected, compareColumnOrder: true))->toBe([], $base);
@@ -88,11 +101,12 @@ it('adopts the message tables of an existing site and records the migration', fu
     $plan = app(Adopter::class)->planFor(app(SchemaRegistry::class)->get('messages'));
 
     expect($plan->status)->toBe(AdoptionStatus::Adoptable, implode('; ', $plan->differences))
-        ->and($plan->pendingMigrations)->toBe([MESSAGE_MIGRATION]);
+        ->and($plan->pendingMigrations)->toBe([MESSAGE_MIGRATION, IGNORED_MIGRATION]);
 
-    $this->artisan('filagora:adopt', ['--package' => 'messages'])->expectsOutputToContain('Recorded 1 migration(s) as run.')->assertExitCode(0);
+    $this->artisan('filagora:adopt', ['--package' => 'messages'])->expectsOutputToContain('Recorded 2 migration(s) as run.')->assertExitCode(0);
 
-    expect(DB::table('migrations')->where('migration', MESSAGE_MIGRATION)->exists())->toBeTrue();
+    expect(DB::table('migrations')->where('migration', MESSAGE_MIGRATION)->exists())->toBeTrue()
+        ->and(DB::table('migrations')->where('migration', IGNORED_MIGRATION)->exists())->toBeTrue();
 });
 
 it('refuses a site that lost an index or has only some of the tables', function () {
@@ -110,4 +124,13 @@ it('refuses a site that lost an index or has only some of the tables', function 
 it('is already adopted on a site that ran the package migration', function () {
     expect(app(Adopter::class)->planFor(app(SchemaRegistry::class)->get('messages'))->status)->toBe(AdoptionStatus::AlreadyAdopted)
         ->and(Tables::name('private_messages'))->toBe('filagora_private_messages');
+});
+
+it('keeps the ignore list one row per pair, with the key names the live site has', function () {
+    $shape = TableShape::inspect('ignored_users');
+
+    expect(array_keys($shape->columns))->toBe(['id', 'user_id', 'ignored_user_id', 'created_at', 'updated_at'])
+        ->and($shape->indexes['ignored_users_user_id_ignored_user_id_unique'])->toMatchArray(['columns' => ['user_id', 'ignored_user_id'], 'unique' => true])
+        ->and($shape->foreignKeys['ignored_users_user_id_foreign']['on_delete'])->toBe('cascade')
+        ->and($shape->foreignKeys['ignored_users_ignored_user_id_foreign']['on_delete'])->toBe('cascade');
 });

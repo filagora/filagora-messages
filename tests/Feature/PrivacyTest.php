@@ -5,11 +5,13 @@ declare(strict_types=1);
 use Filagora\Core\Privacy\PrivacyContributorRegistry;
 use Filagora\Core\Privacy\RetentionRuleRegistry;
 use Filagora\Messages\Events\ConversationsPurging;
+use Filagora\Messages\Models\IgnoredUser;
 use Filagora\Messages\Models\PrivateConversation;
 use Filagora\Messages\Models\PrivateConversationParticipant;
 use Filagora\Messages\Models\PrivateMessage;
 use Filagora\Messages\Models\PrivateMessageFolder;
 use Filagora\Messages\Privacy\MessagesDataContributor;
+use Filagora\Messages\Services\IgnoredUsers;
 use Filagora\Messages\Services\Mailbox;
 use Filagora\Messages\Services\Messages;
 use Filagora\Messages\Tests\Support\TestUser;
@@ -91,4 +93,27 @@ it('purges Trash through core\'s retention run, and honours zero as keep', funct
     config(['filagora-messages.trash.retention_days' => 30]);
     expect($rule->prune(true))->toBe(1)->and(PrivateConversationParticipant::whereNotNull('deleted_at')->count())->toBe(0)
         ->and($rule->prune(false))->toBe(1)->and(PrivateConversationParticipant::whereNotNull('deleted_at')->count())->toBe(1);
+});
+
+it('exports the people a person ignores, and not the people who ignore them', function () {
+    [$alice, $bob, $cara] = [TestUser::make('Alice'), TestUser::make('Bob'), TestUser::make('Cara')];
+    $this->travelTo(now()->setTime(12, 0));
+    app(IgnoredUsers::class)->ignore($alice, $bob);
+    app(IgnoredUsers::class)->ignore($cara, $alice);
+
+    expect(contributor()->export($alice)['ignoring'])->toBe([['user_id' => $bob->id, 'since' => now()->toIso8601String()]])
+        ->and(contributor()->export($cara)['ignoring'])->toBe([['user_id' => $alice->id, 'since' => now()->toIso8601String()]])
+        ->and(contributor()->export($bob)['ignoring'])->toBe([]);
+});
+
+it('erases a person\'s ignore list and the entries that name them, and nobody else\'s', function () {
+    [$alice, $bob, $cara, $dan] = [TestUser::make('Alice'), TestUser::make('Bob'), TestUser::make('Cara'), TestUser::make('Dan')];
+    app(IgnoredUsers::class)->ignore($alice, $bob);
+    app(IgnoredUsers::class)->ignore($cara, $alice);
+    app(IgnoredUsers::class)->ignore($bob, $dan);
+
+    contributor()->erase($alice);
+
+    expect(IgnoredUser::count())->toBe(1)
+        ->and(IgnoredUser::sole()->only(['user_id', 'ignored_user_id']))->toBe(['user_id' => $bob->id, 'ignored_user_id' => $dan->id]);
 });

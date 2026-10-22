@@ -528,5 +528,100 @@ return [
                 ],
             ],
         ],
+        'ignored_users' => [
+            'columns' => [
+                'id' => [
+                    'type' => 'bigint unsigned',
+                    'nullable' => false,
+                    'default' => null,
+                    'collation' => null,
+                    'auto_increment' => true,
+                    'generation' => null,
+                ],
+                'user_id' => [
+                    'type' => 'bigint unsigned',
+                    'nullable' => false,
+                    'default' => null,
+                    'collation' => null,
+                    'auto_increment' => false,
+                    'generation' => null,
+                ],
+                'ignored_user_id' => [
+                    'type' => 'bigint unsigned',
+                    'nullable' => false,
+                    'default' => null,
+                    'collation' => null,
+                    'auto_increment' => false,
+                    'generation' => null,
+                ],
+                'created_at' => [
+                    'type' => 'timestamp',
+                    'nullable' => true,
+                    'default' => null,
+                    'collation' => null,
+                    'auto_increment' => false,
+                    'generation' => null,
+                ],
+                'updated_at' => [
+                    'type' => 'timestamp',
+                    'nullable' => true,
+                    'default' => null,
+                    'collation' => null,
+                    'auto_increment' => false,
+                    'generation' => null,
+                ],
+            ],
+            'indexes' => [
+                'ignored_users_ignored_user_id_foreign' => [
+                    'columns' => [
+                        'ignored_user_id',
+                    ],
+                    'unique' => false,
+                    'primary' => false,
+                    'type' => 'btree',
+                ],
+                'ignored_users_user_id_ignored_user_id_unique' => [
+                    'columns' => [
+                        'user_id',
+                        'ignored_user_id',
+                    ],
+                    'unique' => true,
+                    'primary' => false,
+                    'type' => 'btree',
+                ],
+                'primary' => [
+                    'columns' => [
+                        'id',
+                    ],
+                    'unique' => true,
+                    'primary' => true,
+                    'type' => 'btree',
+                ],
+            ],
+            'foreign_keys' => [
+                'ignored_users_ignored_user_id_foreign' => [
+                    'columns' => [
+                        'ignored_user_id',
+                    ],
+                    'on' => '{users}',
+                    'foreign_columns' => [
+                        'id',
+                    ],
+                    'on_delete' => 'cascade',
+                    'on_update' => 'restrict',
+                ],
+                'ignored_users_user_id_foreign' => [
+                    'columns' => [
+                        'user_id',
+                    ],
+                    'on' => '{users}',
+                    'foreign_columns' => [
+                        'id',
+                    ],
+                    'on_delete' => 'cascade',
+                    'on_update' => 'restrict',
+                ],
+            ],
+        ],
     ],
 ];

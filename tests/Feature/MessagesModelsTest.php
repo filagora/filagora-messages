@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Filagora\Messages\Models\IgnoredUser;
 use Filagora\Messages\Models\PrivateConversation;
 use Filagora\Messages\Models\PrivateConversationParticipant;
 use Filagora\Messages\Models\PrivateMessage;
@@ -22,8 +23,9 @@ function mailboxFixture(): array
 }
 
 it('lists its models in the configuration by default', function () {
-    expect(array_keys(config('filagora-messages.models')))->toBe(['folder', 'conversation', 'participant', 'message'])
-        ->and(Models::class('message'))->toBe(PrivateMessage::class);
+    expect(array_keys(config('filagora-messages.models')))->toBe(['folder', 'conversation', 'participant', 'message', 'ignored_user'])
+        ->and(Models::class('message'))->toBe(PrivateMessage::class)
+        ->and(Models::class('ignored_user'))->toBe(IgnoredUser::class);
 
     config(['filagora.models.message' => 'Custom\\Message']);
     expect(Models::class('message'))->toBe('Custom\\Message');
