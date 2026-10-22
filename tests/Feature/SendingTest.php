@@ -6,8 +6,11 @@ use Filagora\Messages\Contracts\MessagingPolicy;
 use Filagora\Messages\Enums\MessageRefusal;
 use Filagora\Messages\Events\MessageReceived;
 use Filagora\Messages\Exceptions\MessageRefused;
+use Filagora\Messages\Models\PrivateConversation;
 use Filagora\Messages\Models\PrivateConversationParticipant;
+use Filagora\Messages\Models\PrivateMessage;
 use Filagora\Messages\Notifications\MessageReceivedNotification;
+use Filagora\Messages\Services\IgnoredUsers;
 use Filagora\Messages\Services\Mailbox;
 use Filagora\Messages\Services\Messages;
 use Filagora\Messages\Tests\Support\TestUser;
@@ -200,4 +203,73 @@ it('sends no mail when the host turns it off, but still tells it through the eve
 
     Notification::assertNothingSent();
     expect($heard)->toBe([$bob->id]);
+});
+
+it('refuses to send to someone the sender ignores, or who ignores the sender, and names them', function (string $direction) {
+    [$alice, $bob, $cara] = [TestUser::make('Alice'), TestUser::make('Bob'), TestUser::make('Cara')];
+    $direction === 'sender ignores' ? app(IgnoredUsers::class)->ignore($alice, $bob) : app(IgnoredUsers::class)->ignore($bob, $alice);
+
+    $refused = refusal(fn () => app(Messages::class)->send($alice, [$bob, $cara], 'Hi', 'Hello'));
+
+    expect($refused->reason)->toBe(MessageRefusal::NOT_ALLOWED)
+        ->and($refused->blocked)->toBe([$bob->id]);
+    expect(PrivateConversation::count())->toBe(0);
+})->with(['sender ignores', 'recipient ignores']);
+
+it('sends to the people who are not ignored', function () {
+    [$alice, $bob, $cara] = [TestUser::make('Alice'), TestUser::make('Bob'), TestUser::make('Cara')];
+    app(IgnoredUsers::class)->ignore($alice, $bob);
+
+    $conversation = app(Messages::class)->send($alice, [$cara], 'Hi', 'Hello');
+
+    expect($conversation->participants)->toHaveCount(2);
+});
+
+it('sends again once the person is taken off the list', function () {
+    [$alice, $bob] = [TestUser::make('Alice'), TestUser::make('Bob')];
+    app(IgnoredUsers::class)->ignore($alice, $bob);
+    expect(fn () => app(Messages::class)->send($alice, [$bob], 'Hi', 'Hello'))->toThrow(MessageRefused::class);
+
+    app(IgnoredUsers::class)->unignore($alice, $bob);
+
+    expect(app(Messages::class)->send($alice, [$bob], 'Hi', 'Hello'))->toBeInstanceOf(PrivateConversation::class);
+});
+
+it('refuses a reply in a conversation where someone ignored someone, and keeps the messages', function () {
+    [$alice, $bob, $cara] = [TestUser::make('Alice'), TestUser::make('Bob'), TestUser::make('Cara')];
+    $conversation = app(Messages::class)->send($alice, [$bob, $cara], 'Plans', 'Hello');
+    app(IgnoredUsers::class)->ignore($bob, $alice);
+
+    $refused = refusal(fn () => app(Messages::class)->reply($alice, $conversation, 'Anyone there?'));
+
+    expect($refused->reason)->toBe(MessageRefusal::NOT_ALLOWED)
+        ->and($refused->blocked)->toBe([$bob->id])
+        ->and($conversation->messages()->count())->toBe(1);
+
+    expect(app(Messages::class)->reply($cara, $conversation, 'I am'))->toBeInstanceOf(PrivateMessage::class);
+});
+
+it('does not stop a person reading the messages they already have', function () {
+    [$alice, $bob] = [TestUser::make('Alice'), TestUser::make('Bob')];
+    $conversation = app(Messages::class)->send($alice, [$bob], 'Plans', 'Hello');
+    app(IgnoredUsers::class)->ignore($bob, $alice);
+
+    expect(app(Messages::class)->open($bob, $conversation)->is_read)->toBeTrue();
+});
+
+it('applies the site\'s policy as well as the ignore list', function () {
+    [$alice, $bob, $cara] = [TestUser::make('Alice'), TestUser::make('Bob'), TestUser::make('Cara')];
+    app(IgnoredUsers::class)->ignore($alice, $bob);
+    app()->instance(MessagingPolicy::class, new class implements MessagingPolicy
+    {
+        public function canMessage(Authenticatable $sender, Authenticatable $recipient): bool
+        {
+            return $recipient->name !== 'Cara';
+        }
+    });
+    app()->forgetInstance(Messages::class);
+
+    $refused = refusal(fn () => app(Messages::class)->send($alice, [$bob, $cara], 'Hi', 'Hello'));
+
+    expect($refused->blocked)->toBe([$bob->id, $cara->id]);
 });

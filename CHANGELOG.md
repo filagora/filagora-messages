@@ -5,6 +5,11 @@ All notable changes to this package are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Ignore lists.** The `ignored_users` table (one row per pair, the shape of the forum the package was extracted from), its migration and schema snapshot (so `filagora:adopt` now records two migrations), the `IgnoredUser` model (a person cannot ignore themselves) and the `ignored_user` entry in the swappable models. `IgnoredUsers`: `ignore()`, `unignore()`, `isIgnoring()`, `isIgnoredBy()`, `isBlockedBetween()`, `ignoredIds()` and `blockedIdsFor()` (for a recipient search), with `UserIgnored` and `UserUnignored` events. Ignoring blocks private messages both ways: `Messages::send()` and `reply()` refuse (`NOT_ALLOWED`, naming the recipients) when either person has the other on their list, in addition to the site's `MessagingPolicy`. Reading what you already have is not affected.
+- The privacy export lists the people a person ignores (not who ignores them); erasure removes their list and the entries that name them. The site this was extracted from did neither.
+
 ## [0.2.0] - 2026-10-17
 
 ### Added

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Filagora\Messages\Models\IgnoredUser;
 use Filagora\Messages\Models\PrivateConversation;
 use Filagora\Messages\Models\PrivateConversationParticipant;
 use Filagora\Messages\Models\PrivateMessage;
@@ -24,6 +25,7 @@ return [
         'conversation' => PrivateConversation::class,
         'participant' => PrivateConversationParticipant::class,
         'message' => PrivateMessage::class,
+        'ignored_user' => IgnoredUser::class,
     ],
 
     /*

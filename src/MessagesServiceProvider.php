@@ -22,6 +22,7 @@ use Filagora\Messages\Listeners\SendMessageMail;
 use Filagora\Messages\Messaging\AllowAllMessaging;
 use Filagora\Messages\Privacy\MessagesDataContributor;
 use Filagora\Messages\Privacy\TrashRetention;
+use Filagora\Messages\Services\IgnoredUsers;
 use Filagora\Messages\Services\Mailbox;
 use Filagora\Messages\Services\Messages;
 use Illuminate\Support\Facades\Event;
@@ -35,6 +36,7 @@ class MessagesServiceProvider extends ServiceProvider
 
         $this->app->bindIf(MessagingPolicy::class, AllowAllMessaging::class);
         $this->app->singleton(Mailbox::class);
+        $this->app->singleton(IgnoredUsers::class);
         $this->app->singleton(Messages::class);
     }
 

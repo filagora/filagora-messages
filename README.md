@@ -8,8 +8,8 @@ unread, trash, and a purge of what has sat in the trash too long.
 
 ## Tables
 
-`private_message_folders`, `private_conversations`, `private_conversation_participants` and
-`private_messages` (prefixed `filagora_` by default). A conversation has one participant row per
+`private_message_folders`, `private_conversations`, `private_conversation_participants`,
+`private_messages` and `ignored_users` (prefixed `filagora_` by default). A conversation has one participant row per
 person, holding that person's folder, read state and trash state, so deleting or trashing is
 per person. A site that already has these tables can adopt them with `php artisan filagora:adopt`.
 Models can be swapped in `config/filagora-messages.php`.
@@ -28,7 +28,13 @@ $mailbox->restore($recipient, [$conversation->id]);
 ```
 
 - **Who may message whom** is the `MessagingPolicy` contract; bind your own (a member who switched
-  messages off, an ignore list). Anything refused throws `MessageRefused` with a `reason`.
+  messages off, a suspended account) and the ignore lists below. Anything refused throws
+  `MessageRefused` with a `reason`, and `blocked` names the recipients who may not be messaged.
+- **Ignore lists.** `IgnoredUsers::ignore($me, $them)` and `unignore()`; `isIgnoring()` and
+  `isIgnoredBy()` answer for one direction. Either person ignoring the other blocks private messages
+  between them both ways (`isBlockedBetween()`), checked on every send and reply, and
+  `blockedIdsFor($me)` gives your recipient search the people to leave out. `UserIgnored` and
+  `UserUnignored` fire when a list changes. Messages already in your mailbox stay readable.
 - **Mail.** A new message is emailed to its recipients. Set `filagora-messages.mail.enabled` to
   false to notify through your own channels from the `MessageReceived` event.
 - **Trash.** `filagora:messages:purge-trashed` (schedule it daily) removes copies trashed more than
