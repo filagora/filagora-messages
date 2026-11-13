@@ -8,6 +8,10 @@ unread, trash, and a purge of what has sat in the trash too long.
 
 ## What it provides
 
+### Overview
+
+Private conversations between members, with folders, read state and trash, for Filagora.
+
 ### Tables
 
 `private_message_folders`, `private_conversations`, `private_conversation_participants`,
@@ -15,6 +19,24 @@ unread, trash, and a purge of what has sat in the trash too long.
 person, holding that person's folder, read state and trash state, so deleting or trashing is
 per person. A site that already has these tables can adopt them with `php artisan filagora:adopt`.
 Models can be swapped in `config/filagora-messages.php`.
+
+### Commands
+
+| Command | What it does |
+| --- | --- |
+| `filagora:messages:link-attachments` | Add the private message links to the forums attachments table. |
+| `filagora:messages:purge-trashed {--days=} {--dry-run}` | Permanently remove private conversations that sat in Trash past the retention window, and conversations no participant keeps. |
+
+### Events
+
+- `ConversationsPurging`: Conversations that every participant has removed, fired just before they and their messages are deleted, so a host can remove what it attached to them (uploaded files, search entries).
+- `MessageReceived`: A new message, and the people it is for (everyone in the conversation but the sender, and only those who have not removed it).
+- `UserIgnored`: A person put another on their ignore list.
+- `UserUnignored`: A person took another off their ignore list.
+
+### Access
+
+This package defines no abilities.
 
 ### Using it
 
