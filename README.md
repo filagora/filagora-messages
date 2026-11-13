@@ -6,7 +6,9 @@ unread, trash, and a purge of what has sat in the trash too long.
 > The package is at `0.1`: the API may change between `0.x` minor
 > versions. There is no frontend: it is models and services, and you build the mailbox pages.
 
-## Tables
+## What it provides
+
+### Tables
 
 `private_message_folders`, `private_conversations`, `private_conversation_participants`,
 `private_messages` and `ignored_users` (prefixed `filagora_` by default). A conversation has one participant row per
@@ -14,7 +16,7 @@ person, holding that person's folder, read state and trash state, so deleting or
 per person. A site that already has these tables can adopt them with `php artisan filagora:adopt`.
 Models can be swapped in `config/filagora-messages.php`.
 
-## Using it
+### Using it
 
 ```php
 $messages = app(\Filagora\Messages\Services\Messages::class);
@@ -51,6 +53,10 @@ $mailbox->restore($recipient, [$conversation->id]);
   If the conversation is deleted, forums cleans up the orphaned files.
 - **Privacy.** Registers a contributor (export and erasure) with core.
 
+## Requirements
+
+PHP 8.4, Laravel 13 and Filament 5. Tested against MariaDB 11.4. Requires [`filagora/filagora-core`](https://github.com/filagora/filagora-core).
+
 ## Install
 
 ```bash
@@ -61,12 +67,31 @@ php artisan migrate
 Schedule `filagora:messages:purge-trashed` daily. Tables are created with the `filagora_` prefix; a site
 that already has them can run `php artisan filagora:adopt` instead of migrating.
 
+## Configuration
+
+`config/filagora-messages.php` is merged with the host's copy, so list only what
+differs. Publish it with `php artisan vendor:publish --tag=filagora-messages-config`.
+
+## Extending
+
+Extend through documented contracts, events and registries. Anything not documented
+is `@internal`.
+
 ## Testing
 
 ```bash
 composer test
 ```
 
+Tests run against a real MariaDB, never SQLite, so engine behaviour (FULLTEXT,
+`ONLY_FULL_GROUP_BY`, collation) matches production. Host and credentials come from
+your environment; the database is always named `testing`, never your development one.
+
+## Local development (DDEV)
+
+`.ddev/` is included. `ddev start` creates both `db` and `testing` (run `ddev restart` once
+if `testing` is missing), then `ddev exec vendor/bin/pest`.
+
 ## Licence
 
-MIT.
+MIT. See [LICENSE](LICENSE).
